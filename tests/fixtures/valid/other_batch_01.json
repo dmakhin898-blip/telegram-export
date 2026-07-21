@@ -1,0 +1,24 @@
+{
+  "channels": [
+    {
+      "name": "Example News Channel",
+      "short_name": "Example News",
+      "topics": [
+        {
+          "teaser": "Короткий разбор нового API-лимита и что менять в клиенте.",
+          "url": "https://t.me/example_news/42",
+          "problem": "Старый клиент упирается в новый rate limit и начинает терять батчи.",
+          "context": "В анонсе описаны новые квоты на минуту и на сутки. Автор показывает пример ретраев с jitter и почему naive sleep ломает очередь. Есть ссылка на changelog и сравнение со старым лимитом.",
+          "solution": "Ввести backoff с jitter, резать размер батча и логировать 429 отдельно. Обновить клиент до версии из changelog."
+        }
+      ],
+      "more_topics": [
+        {
+          "summary": "Заметка про миграцию вебхуков на новый endpoint",
+          "url": "https://t.me/example_news/43"
+        }
+      ],
+      "omitted_count": 1
+    }
+  ]
+}

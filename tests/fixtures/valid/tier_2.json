@@ -1,0 +1,19 @@
+{
+  "channels": [
+    {
+      "name": "Example Priority Author",
+      "short_name": "Example Author",
+      "topics": [
+        {
+          "teaser": "Автор разбирает ловушку метрик vanity в еженедельном отчёте.",
+          "url": "https://t.me/example_author/10",
+          "problem": "Команда оптимизирует просмотры вместо удержания и оплаты.",
+          "context": "В посте сравниваются два дашборда: один с охватом, другой с activation и paywall view. Автор показывает, как рост охвата маскировал падение доходимости до оплаты. Приведены цифры за две недели и короткий разбор воронки.",
+          "solution": "Перенести фокус на activation → paywall view → checkout. Vanity-метрики оставить как вторичный слой."
+        }
+      ],
+      "more_topics": [],
+      "omitted_count": 0
+    }
+  ]
+}

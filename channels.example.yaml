@@ -1,0 +1,43 @@
+# Copy to channels.yaml and fill with your channel ids from list_dialogs.py.
+#
+# catalog: reference only (export ignores this section)
+#   - name: channel title (without @username)
+#   - id: Telethon peer id (-100... prefix)
+#   - alias: public @username, or null if none
+# tiers: active export config — copy id or alias from catalog below
+#
+# captain_alumni: full history backfill (community / high-priority folders)
+# tier_2: 2-week backfill + priority author channels (digest page 1 after alumni)
+# other: 2-week backfill + remaining curated channels
+#
+# Copy ids EXACTLY with -100 prefix (from list_dialogs.py or catalog below).
+# Usernames: "@username" — do NOT write -"@username".
+#
+# Values below are fictional placeholders for structure only.
+
+catalog:
+  - name: Example Alumni Community
+    id: -1001111111111
+    alias: null
+  - name: Example Priority Author
+    id: -1002222222222
+    alias: "@example_author"
+  - name: Example News Channel
+    id: -1003333333333
+    alias: "@example_news"
+
+tiers:
+  captain_alumni:
+    backfill: full
+    channels:
+      - -1001111111111  # Example Alumni Community
+
+  tier_2:
+    backfill: 2weeks
+    channels:
+      - "@example_author"  # Example Priority Author
+
+  other:
+    backfill: 2weeks
+    channels:
+      - "@example_news"  # Example News Channel
