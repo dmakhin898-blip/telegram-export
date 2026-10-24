@@ -9,3 +9,4 @@ __pycache__/
 channels.yaml
 _build/
 openspec/
+.quint

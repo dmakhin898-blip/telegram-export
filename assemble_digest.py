@@ -10,7 +10,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from common import get_inbox_dir, project_root
+from useful_count import load_useful_counts, order_sections
 
 BUILD_DIRNAME = "_build"
 SENTENCE_SPLIT = re.compile(r"(?<=[.!?…])\s+")
@@ -189,10 +192,47 @@ def render_full_topic(topic: dict[str, Any], display_name: str) -> str:
     )
 
 
+def _tier_channel_refs(tier_name: str) -> list[object]:
+    path = project_root() / "channels.yaml"
+    if not path.exists():
+        return []
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    tiers = data.get("tiers") or {}
+    tier = tiers.get(tier_name) or {}
+    if not isinstance(tier, dict):
+        return []
+    channels = tier.get("channels") or []
+    if not isinstance(channels, list):
+        return []
+    return list(channels)
+
+
+def _apply_useful_order(
+    alumni_channels: list[dict[str, Any]],
+    tier2_channels: list[dict[str, Any]],
+    other_channels: list[dict[str, Any]],
+    *,
+    inbox: Path,
+    exclude: Path,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    useful = load_useful_counts(inbox, exclude=exclude)
+    for channel in alumni_channels:
+        channel["useful_count"] = useful.section_count(channel)
+    tier2_ordered = order_sections(
+        tier2_channels, useful, _tier_channel_refs("tier_2")
+    )
+    other_ordered = order_sections(
+        other_channels, useful, _tier_channel_refs("other")
+    )
+    return alumni_channels, tier2_ordered, other_ordered
+
+
 def render_channel_section(channel: dict[str, Any], *, alumni: bool) -> str:
     name = str(channel.get("name") or channel.get("channel") or "Канал").strip()
     short = str(channel.get("short_name") or name).strip()
-    lines: list[str] = [f"### {name}", ""]
+    raw_count = channel.get("useful_count", 0)
+    useful_count = raw_count if isinstance(raw_count, int) and raw_count >= 0 else 0
+    lines: list[str] = [f"### {name} · {useful_count}", ""]
 
     for topic in channel.get("topics") or []:
         display = short
@@ -379,6 +419,22 @@ def assemble(
             print(f"  - {err}", file=sys.stderr)
         raise SystemExit(1)
 
+    inbox: Path | None
+    if write or inbox_dir is not None:
+        inbox = Path(inbox_dir) if inbox_dir is not None else get_inbox_dir()
+        out_path = inbox / "digests" / f"Telegram Digest {date}.md"
+        alumni_channels, tier2_channels, other_channels = _apply_useful_order(
+            alumni_channels,
+            tier2_channels,
+            other_channels,
+            inbox=inbox,
+            exclude=out_path,
+        )
+    else:
+        inbox = None
+        for channel in (*alumni_channels, *tier2_channels, *other_channels):
+            channel["useful_count"] = 0
+
     markdown = render_digest(
         date=date,
         meta=meta,
@@ -391,7 +447,9 @@ def assemble(
         print("Validation OK (dry-run, no file written)")
         return None
 
-    inbox = Path(inbox_dir) if inbox_dir is not None else get_inbox_dir()
+    if inbox is None:
+        raise SystemExit("Inbox directory is required to write a digest")
+
     out_dir = inbox / "digests"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"Telegram Digest {date}.md"
