@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "quint-code": {
+      "command": "/usr/local/bin/quint-code",
+      "args": [
+        "serve"
+      ],
+      "cwd": "/Users/daniilmakhin/Documents/AI tasks/telegram-export",
+      "env": {
+        "QUINT_PROJECT_ROOT": "/Users/daniilmakhin/Documents/AI tasks/telegram-export"
+      }
+    }
+  }
+}
