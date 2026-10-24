@@ -7,7 +7,7 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import yaml
 from telethon import TelegramClient
@@ -247,6 +247,54 @@ def media_type_label(message) -> str:
     if message.poll:
         return "poll"
     return "media"
+
+
+_USERNAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+_EXPORT_HEADING = re.compile(
+    r"^## [^|]+ \| "
+    r"(?P<slug>.+?)"
+    r"(?: \(@(?P<username>[A-Za-z][A-Za-z0-9_]*)\))?"
+    r" \((?P<id>[^)]+)\) \| msg:(?P<msg>\d+)\s*$"
+)
+
+
+class ExportHeading(NamedTuple):
+    slug: str
+    channel_id: str
+    message_id: int
+    username: str | None
+
+
+def public_username(username: object) -> str | None:
+    if not isinstance(username, str):
+        return None
+    text = username.strip()
+    if text.startswith("@"):
+        text = text[1:]
+    if _USERNAME_RE.fullmatch(text) is None:
+        return None
+    return text
+
+
+def heading_channel_key(slug: str, channel_id: str, username: object) -> str:
+    """`slug (@username) (id)` when username is public, otherwise `slug (id)`."""
+    cleaned = public_username(username)
+    if cleaned:
+        return f"{slug} (@{cleaned}) ({channel_id})"
+    return f"{slug} ({channel_id})"
+
+
+def parse_export_heading(line: str) -> ExportHeading | None:
+    """Read either heading shape. `username` is None when the line has no `@username`."""
+    match = _EXPORT_HEADING.match(line.rstrip("\r\n"))
+    if match is None:
+        return None
+    return ExportHeading(
+        slug=match.group("slug"),
+        channel_id=match.group("id"),
+        message_id=int(match.group("msg")),
+        username=match.group("username"),
+    )
 
 
 def format_message_block(channel_key: str, message) -> str:

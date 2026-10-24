@@ -14,9 +14,18 @@ sys.path.insert(0, str(ROOT))
 from useful_count import load_useful_counts, order_sections  # noqa: E402
 
 
-def _export_heading(slug: str, channel_id: str, message_id: int) -> str:
+def _export_heading(
+    slug: str,
+    channel_id: str,
+    message_id: int,
+    username: str | None = None,
+) -> str:
+    if username:
+        key = f"{slug} (@{username}) ({channel_id})"
+    else:
+        key = f"{slug} ({channel_id})"
     return (
-        f"## 2026-01-01 00:00:00 UTC | {slug} ({channel_id}) | msg:{message_id}\n\n"
+        f"## 2026-01-01 00:00:00 UTC | {key} | msg:{message_id}\n\n"
         "post\n\n---\n"
     )
 
@@ -274,6 +283,67 @@ class UsefulCountTests(unittest.TestCase):
             counts = load_useful_counts(inbox)
             self.assertEqual(counts["111"], 1)
             self.assertEqual(counts["222"], 0)
+
+    def test_shared_msg_counts_only_for_heading_with_username(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            inbox = Path(tmp)
+            export = inbox / "channels" / "2026-06.md"
+            export.parent.mkdir(parents=True)
+            export.write_text(
+                _export_heading("ozman", "1627768519", 7429, username="ozmanofficial")
+                + _export_heading("антонов-такой-антонов", "1324711820", 7429)
+                + _export_heading(
+                    "captain-alumni-комьюнити-выпускников", "2210731208", 7429
+                ),
+                encoding="utf-8",
+            )
+            digests = inbox / "digests"
+            digests.mkdir()
+            (digests / "Telegram Digest 13_06_2026.md").write_text(
+                _section(
+                    "OZMAN",
+                    _topic("https://t.me/ozmanofficial/7429", checked=True),
+                ),
+                encoding="utf-8",
+            )
+
+            counts = load_useful_counts(inbox)
+            self.assertEqual(counts["1627768519"], 1)
+            self.assertEqual(counts["1324711820"], 0)
+            self.assertEqual(counts["2210731208"], 0)
+
+    def test_username_on_one_message_does_not_count_another_shared_message(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            inbox = Path(tmp)
+            export = inbox / "channels" / "2026-06.md"
+            export.parent.mkdir(parents=True)
+            export.write_text(
+                _export_heading("ozman", "1627768519", 7429, username="ozmanofficial")
+                + _export_heading("ozman", "1627768519", 50)
+                + _export_heading("антонов-такой-антонов", "1324711820", 7429)
+                + _export_heading("антонов-такой-антонов", "1324711820", 50),
+                encoding="utf-8",
+            )
+            digests = inbox / "digests"
+            digests.mkdir()
+            (digests / "Telegram Digest 13_06_2026.md").write_text(
+                _section(
+                    "OZMAN",
+                    _topic("https://t.me/ozmanofficial/7429", checked=True),
+                ),
+                encoding="utf-8",
+            )
+            (digests / "Telegram Digest 20_09_2026.md").write_text(
+                _section(
+                    "OZMAN later",
+                    _topic("https://t.me/ozmanofficial/50", checked=True),
+                ),
+                encoding="utf-8",
+            )
+
+            counts = load_useful_counts(inbox)
+            self.assertEqual(counts["1627768519"], 1)
+            self.assertEqual(counts["1324711820"], 0)
 
 
 if __name__ == "__main__":

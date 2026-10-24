@@ -8,13 +8,12 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+from common import parse_export_heading
+
 TME_C = re.compile(r"https?://t\.me/c/(\d+)/(\d+)", re.IGNORECASE)
 TME_USER = re.compile(
     r"https?://t\.me/([A-Za-z][A-Za-z0-9_]*)/(\d+)",
     re.IGNORECASE,
-)
-EXPORT_HEADING = re.compile(
-    r"^## [^|]+ \| .+ \(([^)]+)\) \| msg:(\d+)\s*$"
 )
 TEASER = re.compile(
     r"^\*\*.+\*\*\s+—\s+\[пост\]\((https?://[^)\s]+)\)"
@@ -26,16 +25,22 @@ FILENAME_DATE = re.compile(r"(\d{2})_(\d{2})_(\d{4})")
 
 
 class _ExportIndex:
-    """Export headings `slug (id) | msg:{n}` and usernames taught from them."""
+    """Both heading shapes, plus usernames taught from digest text already read."""
 
     def __init__(self) -> None:
         self._ids_for_msg: dict[int, set[str]] = {}
         self._msgs_for_id: dict[str, set[int]] = {}
+        self._ids_for_name_msg: dict[tuple[str, int], set[str]] = {}
         self._taught: dict[str, str] = {}
 
-    def add_heading(self, channel_id: str, message_id: int) -> None:
+    def add_heading(
+        self, channel_id: str, message_id: int, username: str | None = None
+    ) -> None:
         self._ids_for_msg.setdefault(message_id, set()).add(channel_id)
         self._msgs_for_id.setdefault(channel_id, set()).add(message_id)
+        if username:
+            key = (username.lower(), message_id)
+            self._ids_for_name_msg.setdefault(key, set()).add(channel_id)
 
     def resolve(self, url: str, *, teach: bool) -> str | None:
         private = TME_C.search(url)
@@ -50,6 +55,11 @@ class _ExportIndex:
             return None
         username = public.group(1).lower()
         message_id = int(public.group(2))
+        named = self._ids_for_name_msg.get((username, message_id), ())
+        if len(named) == 1:
+            return next(iter(named))
+        if len(named) > 1:
+            return None
         channel_ids = self._ids_for_msg.get(message_id, ())
         if len(channel_ids) == 1:
             found = next(iter(channel_ids))
@@ -148,10 +158,10 @@ def _read_export_index(inbox: Path) -> _ExportIndex:
         if _is_under_digests(inbox, path):
             continue
         for line in path.read_text(encoding="utf-8").splitlines():
-            match = EXPORT_HEADING.match(line)
-            if match is None:
+            heading = parse_export_heading(line)
+            if heading is None:
                 continue
-            index.add_heading(match.group(1), int(match.group(2)))
+            index.add_heading(heading.channel_id, heading.message_id, heading.username)
     return index
 
 
